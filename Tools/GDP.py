@@ -1,4 +1,3 @@
-#import sys
 import numpy as np
 from numpy import exp, sqrt, log as ln, log10 as log
 import matplotlib.pyplot as plt
@@ -9,8 +8,6 @@ plt.close('all')
 
 ##############################################################
 data_dir = '../Data/'
-
-#sys.path.append('../Data')
 ## Datasets:
 
 fname = data_dir+'All_from67.xlsx'                                   
@@ -282,33 +279,3 @@ if __name__ == '__main__':
     print '\n*** Done plotting'
 
 
-########################################################################################
-"""
-def analyze_0(data_set):   
-    Nations, Year, GDP = excel(*data_set) 
-    for nation in Nations:
-        if data_set[0] == 'GDP Time Series_Long.xlsx':
-            if 'US' in nation or 'UK' in nation: GDP[nation] *= 1.E6
-
-    #split the database to those whose fitting succeeded or failed: 
-    failure, success = [], [] 
-    #for the successes, dictionaries for all relevant info: 
-    qs, ru, Qh, future, G_model, r_model = {}, {}, {}, {}, {}, {}
-
-    H, R, hs = {}, {}, {} 
-    for nation in Nations:
-        R[nation]  = GDP[nation][-1]/GDP[nation][0]
-        hs[nation] = (R[nation] - 1)/ln(R[nation])
-        try:
-            ru[nation], Qh[nation], Q0_dummy, future[nation], G_model[nation], r_model[nation]\
-               = fitting(nation, GDP[nation], Year[nation])
-            success.append(nation)
-            qs[nation] = Qh[nation]/GDP[nation][0]
-            H[nation]  = hs[nation]/qs[nation]
-        except:
-            failure.append(nation)
-    args = [Nations, Year, GDP, R, hs, ru, qs, Qh, H, success, failure, future, G_model, r_model]
-    return args
-
-
-"""
