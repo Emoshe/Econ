@@ -11,6 +11,21 @@ from econ import *
 
 ########################################################################
 
+def load_POP(region, unit=1.E3):
+    """ Default unit is thousands
+    """
+    fname = region+'_POP.dat'
+    POP_data = np.genfromtxt(fname, skip_header=1, usecols=(0,1), unpack=True,
+              dtype=[('Year','i'),('POP','f')])
+    Year, POP = POP_data['Year'], unit*POP_data['POP']
+    # POP normalized to its initial entry
+    P = POP/POP[0]
+    # Annual growth rate in %
+    gr = np.zeros(len(POP) - 1)
+    for i in range(len(gr)): 
+        gr[i] = 100.*(POP[i+1]/POP[i] - 1)    
+
+    return Year, POP, P, gr
 
 
 def POP_excel(data_rows):

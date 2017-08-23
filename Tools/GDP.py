@@ -32,6 +32,66 @@ Long = [fname, sheet_name, names_row, years_top_row, years_bot_row,
 
 ##################################################################
 
+def excel(fname, sheet_name, names_row, years_top_row, years_bot_row,
+          data_col1, data_col2=None, years_col=1, minimum=45, the_nation=''):
+    """Load data from excel spreadsheet for the 
+       nations that have a minimum number of entries
+       The time span is returned in dictionary Year[nation]
+       Returned data is stored in dictionary Q_data[nation] 
+    """
+    def entry(row, col): return sheet.cell(row=row, column=col).value
+    
+    def bounds(col, first_row, last_row):
+        """ Find the range of numerical entries
+        between first_row and last_row
+        """
+        top = first_row
+        #first get past all empty cells
+        if entry(top, col) is None:
+            while entry(top, col) is None: top = top + 1
+        #and now find first number    
+        while not is_number(entry(top, col)):                                                 
+            top = top + 1                                                                
+            if top > last_row: return -1, -1                                                      
+        #now find the last entry:
+        bot = last_row
+        if entry(bot,col) is None:
+            while entry(bot, col) is None: bot = bot - 1
+        if is_number(entry(bot,col)): return top, bot                                                                        
+        while not is_number(entry(bot,col)):                                                 
+            bot = bot - 1                                                                
+        return top, bot + 1
+                                                                                        
+    wb = openpyxl.load_workbook(fname)                                   
+    sheet = wb.get_sheet_by_name(sheet_name)                                   
+    span = np.array([entry(r, years_col) for r in range(years_top_row, years_bot_row+1)])
+    cols = sheet.max_column if data_col2 is None else data_col2
+    if cols == data_col1:
+        """process a single nation
+        meaningful data for the full range of span 
+        """
+        nation = entry(names_row, cols)
+        Q = np.array([entry(r, cols) for r in range(years_top_row, years_bot_row+1)])
+        wb.close()
+        return nation, span, Q   
+
+    Year = {}                                                                                 
+    Q_data = {}                                                                        
+    for col in range(data_col1, cols+1):                                                     
+        nation = entry(names_row, col)
+        top, bot = bounds(col, years_top_row, years_bot_row)
+        if top == -1 or bot - top < minimum: continue
+        yr_ = span[top - years_top_row: bot - years_top_row+1]
+        Q_  = np.array([entry(r, col) for r in range(top, bot+1)])
+        if nation in the_nation:
+            wb.close()
+            return nation, yr_, Q_           
+        Year[nation]   = yr_
+        Q_data[nation] = Q_
+    Nations = sorted(Q_data.keys())
+    wb.close()         
+    return Nations, Year, Q_data
+
 
 def summary(print_array, Year, R, ru, qs, H, success, failure, A='', fits=True):
     """print summary sorted on different quantities
