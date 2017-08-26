@@ -209,9 +209,10 @@ def plot_avg(Nations, Year, average, x_range,
         fig.set_ylim(y_range)
         fig.yaxis.set_minor_locator(AutoMinorLocator())
         fig.plot(x_range, (yf,yf), color='lightgrey', lw=0.7) #plot baseline at r = 0   
-        fig.plot(Year[nation][2:], avg)
+        fig.plot(Year[nation][1:], avg)
     Fig.subplots_adjust(left=0.12,right=0.98, bottom=0.05, hspace=0.03, top=.92)
     return Fig
+
 
 
 def load(data_set):   

@@ -130,9 +130,9 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
     bot.set_ylabel('growth rate (%/yr)')
     bot.set_ylim(np.amin(gr)-1., np.amax(gr)+1)
     bot.yaxis.set_minor_locator(AutoMinorLocator())    
-    bot.plot(Year[1:], gr, color=data_color, lw=1.5, label='data') #plot the data
+    bot.plot(Year, gr, color=data_color, lw=1.5, label='data') #plot the data
     if future is None:  #plot running average when not modeling
-        bot.plot(Year[2:], avg, label='running average')
+        bot.plot(Year[1:], avg, label='running average')
     else:
         #plot the model
         bot.plot(future, model_r, color=model_color, label='model')
@@ -140,22 +140,19 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
             bot.plot(Year, r_model_mixed, color='goldenrod', label='hybrid model')
     if dn > 0:    #plot moving averages
         yr_avg, gr_avg = calc_mov_avg(Year, gr, dn)      
-        bot.plot(yr_avg[1:], gr_avg, label='%i-yr rolling avg'%dn)
+        bot.plot(yr_avg, gr_avg, label='%i-yr rolling avg'%dn)
     bot.legend(loc=loc_bot)
     #baseline at 0 growth rate:
     bot.plot(x_base, (0,0), color=base_clr, lw=lw_b)
 
     return Fig
 
-
 def gr_data(Q, Year):
     """Annual growth rate in %
     and its running average
-    """
-    gr   = np.zeros(len(Q) - 1)
-    avg  = np.zeros(len(Q) - 2)
-    for i in range(len(Q) - 1): 
-        gr[i] = (100./Q[i])*(Q[i+1] - Q[i])/(Year[i+1] - Year[i])    
+    """   
+    gr = (100./Q)*np.gradient(Q, Year)
+    avg  = np.zeros(len(gr) - 1)
     for i in range(len(gr) - 1): 
         avg[i] = np.average(gr[:i+1])
     return gr, avg
