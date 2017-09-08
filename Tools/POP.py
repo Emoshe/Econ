@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from numpy import exp, sqrt, log as ln, log10 as log, average
 import matplotlib.pyplot as plt
@@ -117,59 +119,61 @@ def check_sum(World_pop, World_model, Nations, POP, models, Year, future):
     s = '   Models(%i--%i) -- average of %.2G percent, maximum %.2G percent'
     print s  %(future[0], future[-1], np.average(err_m), np.amax(err_m))
     
-    #######Plotting
-    Fig = plt.figure(figsize=(8,10))
-    width  = 0.8
-    height = 0.37
-    x_left = 0.12
-    y_bot  = 0.08
-    dy = height+0.01
-    bot = Fig.add_axes([x_left, y_bot,   width, height])
-    top = Fig.add_axes([x_left, y_bot+dy,width, height])
-    figs = [top, bot]
-    for fig in figs:
+    #######Plotting   
+    Fig, (top, bot) = plt.subplots(2,1, sharex=True, figsize=(8, 10))
+    for fig in [top, bot]:
         fig.set_xlim(Year[0], future[-1])
         fig.xaxis.set_minor_locator(AutoMinorLocator())
-        if fig == figs[-1]:
-            fig.set_xlabel('Year')
-        else:
-            fig.xaxis.set_major_formatter(NullFormatter())
+        fig.set_xlabel('Year')
+        if fig is not bot: plt.setp(fig.get_xticklabels(), visible=False)
 
     #top: data and models
     top.set_ylabel('Population')
     top.set_yscale('log')
+    err_max = 0
     for n, nation in enumerate(Nations):
-        top.plot(future, models[nation], '--', color=color[n])
         top.plot(Year, POP[nation], color=color[n])
+        top.plot(future, models[nation], '--', color=color[n])
+        err = abs(POP[nation]/models[nation][:len(Year)] - 1)  # errors
+        err_max = max(np.max(err), err_max)
+    s  = 'solid lines: data'+15*' '+'dashed lines: models'
+    top.set_title(s, va='bottom')
 
+    #Error strip of the individual models:
+    x_range = (Year[0], future[-1])
+    bot.fill_between(x_range, 1-err_max, 1+err_max, color='gainsboro') #color='lightgray')
+    bot.plot(x_range, (1,1), color='white', lw=0.7)
+
+    line1,  = bot.plot(future, tot_model/World_model, 'k--', label='sum of fractions')
+    legend1 = bot.legend(handles=[line1], loc=1)
+    plt.gca().add_artist(legend1)
+    #ax = plt.gca().add_artist(legend1)
 
     #bot: Fractional populations
-    bot.set_ylim(0, 1)
+    bot.set_ylim(0, 1.3)
     bot.yaxis.set_minor_locator(AutoMinorLocator())
     bot.set_ylabel('fraction of total')
-    s = 'solid lines: data\n' +\
-        'dashed lines: models'
-    bot.text(0.05, 0.8, s, transform=bot.transAxes)
 
-    #for the legends, group the curves in 2 groups 
-    #of 3 in the Continents case (6 curves)
-    #1st group is always in lns, 2nd (when needed) in lns2 
-    lns2 = ''
     for n, nation in enumerate(Nations):
         frac_pop = POP[nation]/tot_pop
         frac_mod = models[nation]/tot_model
         ln_n = bot.plot(Year, frac_pop, color=color[n], label=nation)
-        if n == 0: lns  = ln_n  
-        if n == 3: lns2 = ln_n  
-        if n in [1,2]: lns = lns+ln_n
-        if n in [4,5]: lns2= lns2+ln_n
+        lns = ln_n if n==0 else lns+ln_n
         bot.plot(future, frac_mod, '--', color=color[n])
-    if lns2:
-        labls2 = [l.get_label() for l in lns2]
-        Fig.legend(lns2, labls2, loc=(0.65,0.87))
-    labls = [l.get_label() for l in lns]
-    Fig.legend(lns, labls, loc=(0.15,0.87))
+    '''
+    Legend below the figure:
+    bbox can be a BboxBase instance, a tuple of 
+    [left, bottom, width, height] in the given transform 
+    (normalized axes coordinate if None), 
+    or a tuple of [left, bottom] where the width and height 
+    will be assumed to be zero.
+    loc refers to the location of the anchor point
+    '''
+    labls = [l.get_label() for l in lns]   
+    bot.legend(lns, labls, bbox_to_anchor=(0.5, -0.15), loc='upper center', ncol=2) 
 
+
+    Fig.subplots_adjust(left=0.12,right=0.95, bottom=0.15, top=0.9, hspace=0.02)
     plt.show()
 
     

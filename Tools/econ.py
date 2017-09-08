@@ -14,50 +14,49 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
                loc_top='best', loc_bot='best', loc_title=[0.6,0.2],
                future=None, top_axis=False, dn=None, 
                r_model_mixed=None, model_r=None, model_Q=None, 
-               POP=False, linear=False):
-    plt.rc('legend', handlelength=2) # short legend lines
+               POP=False, linear=False, gdppc=False):
+    def baseline(fig, y):
+        '''Plot a thin x-axis at y
+        '''
+        fig.plot(x_range, (y,y), color='lightgrey', lw=0.7)
     
     if top_axis: t_axis = t_from_yr(future, r_u)
+    
     if POP:
         Title  = nation+' Population'
         y_left = 'Population/Population(%i)'%Year[0]
         dollar = ''        
+    elif gdppc:
+        Title  = nation+' GDP per Capita'
+        y_left = 'GDPPC/GDPPC(%i)'%Year[0]
+        dollar = '\$'
+        GDP_   = 'GDPPC'               
     else:
         Title  = nation+' GDP'
         y_left = 'GDP/GDP(%i)'%Year[0]
         dollar = '\$'        
+        GDP_   = 'GDP'               
     model_color = 'Red'
     data_color  = 'grey'
     #time range of plots:
     x0 = Year[0]
     x1 = Year[-1] if future is None else future[-1]
     x_range = (x0, x1)
-    #for baseline plots:
-    x_base = x_range
-    lw_b = 0.7
-    base_clr = 'lightgrey'
 
-    Fig = plt.figure(figsize=(8, 10))
+    if model_Q is None:        
+        Fig, (top, bot) = plt.subplots(2,1, sharex=True, figsize=(8, 7))
+        figs = [top, bot]
+    else:
+        Fig, (top, mid, bot) = plt.subplots(3,1, sharex=True, figsize=(8, 10))
+        figs = [top, mid, bot]
+        
     Fig.suptitle(Title,fontsize=fontsize+8)     
-    #Employ add_axes method for control of panel sizes
-    #to have enough room to display both 
-    #title and top axis, when needed
-    width  = 0.7
-    height = 0.27 if top_axis else 0.28
-    x_left = 0.15
-    y_bot  = 0.05
-    dy = height+0.01
-    bot = Fig.add_axes([x_left, y_bot,     width, height])
-    mid = Fig.add_axes([x_left, y_bot+dy,  width, height])
-    top = Fig.add_axes([x_left, y_bot+2*dy,width, height])
-    figs = [top, mid, bot]
+    bot.set_xlabel('Year')
     for fig in figs:
         fig.set_xlim(x_range)
         fig.xaxis.set_minor_locator(AutoMinorLocator())
-        if fig == figs[-1]:
-            fig.set_xlabel('Year')
-        else:
-            fig.xaxis.set_major_formatter(NullFormatter())
+        if fig is not bot: plt.setp(fig.get_xticklabels(), visible=False)
+    #plt.setp([fig.get_xticklabels() for fig in figs[:-1]], visible=False)
 
     #top: plot GDP/POP, data and model when supplied
     top.set_ylabel(y_left)
@@ -67,9 +66,7 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
        txt = 'Linear Growth Model'     
        top.text(loc_title[0],loc_title[1],txt,transform=top.transAxes)
     else:
-       top.set_yscale('log')
-    lns1 = top.plot(Year, Q/Q[0], color=data_color, label='data')
-    
+       top.set_yscale('log')   
     # mark the right y-axis with actual, not normalized, Q
     # do that through phantom plot of Q:
     ax1 = top.twinx()
@@ -81,8 +78,8 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
        ax1.set_yscale('log')
     #Scale out powers of 10 to get nicer unit for the axis
     i = int(log(np.amax(Q)))//3 if model_Q is None else int(log(np.amax(model_Q)))//3 
-    s = 'million' if i==2 else ('billion' if i==3 else 'trillion')
-    y_right = 'Population (%s)'%s if POP else 'GDP (%s 2010 USD)'%s
+    s = 'thousand' if i==1 else('million' if i==2 else ('billion' if i==3 else 'trillion'))   
+    y_right = 'Population (%s)'%s if POP else GDP_ +' (%s 2010 USD)'%s
     ax1.set_ylabel(y_right)
     if model_Q is None:
         x_ = Year
@@ -92,39 +89,44 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
         y_ = model_Q/10.**(3*i)
     ax1.plot(x_, y_, lw=0) #phantom plot; generates only right axis marking 
     
-    #plot the model:
-    lns2 = None
+    #plot the data:
+    lns1 = top.plot(Year, Q/Q[0], color=data_color, label='data')
+    #plot the model; first get labels:
+    model = 'model'   
     if linear:
-        model = 'model: r$_0$ = %3.2f'%r_u + '%/yr,  '
+        model += ': r$_0$ = %3.2f'%r_u + '%/yr'
         #list Q_0 using scientific notation with 1 decimal digit
-        model+= 'Q$_0$ = %s'%pwr10(Qh,1) + dollar
-        lns2 = top.plot(future, model_Q/Q[0], color=model_color, label=model)   
+        model+= ', Q$_0$ = %s'%pwr10(Qh,1) + dollar
     if top_axis:
         ax2 = top.twiny()                    #generate top x-axis, label tau = r_u*t      
         ax2.set_xlabel(r'$r_u$' + '(Year - %i)'%Year[0])
         ax2.set_xlim(t_axis[0], t_axis[-1])
         ax2.xaxis.set_minor_locator(AutoMinorLocator())        
-        model = 'model: r$_u$ = %3.2f'%r_u + '%/yr,  '
-        if Q0: model += 'Q$_0$/Q(0) = %.1g, ' %(Q0/Q[0])
+        model += ': r$_u$ = %3.2f'%r_u + '%/yr'
+        if Q0: model += ', Q$_0$/Q(0) = %.1g' %(Q0/Q[0])
         #list Qh only if there's meaningful hindering
         if Q[-1]/Qh > 1.E-3:  #smaller Qf/Qh means pure exponential growth; no hindering
-            model += ',  Q$_h$ = %s'%(pwr10(Qh,1) + dollar)
-        lns2 = ax2.plot(t_axis, model_Q/Q[0], color=model_color, label=model)
+            model += ', Q$_h$ = %s'%(pwr10(Qh,1) + dollar)
+    #and now plot:
+    if model_Q is None:
+        lns2 = None
+    else:
+        lns2 = top.plot(future, model_Q/Q[0], color=model_color, label=model)
     lns = lns1 if lns2 is None else lns1+lns2
     #and now the legend:
     labls = [l.get_label() for l in lns]
-    top.legend(lns, labls, loc=loc_top)
+    top.legend(lns, labls, loc=loc_top, handlelength=2, labelspacing=0.15)
 
     #mid: ratio, data/model:
     if model_Q is not None:
         ratio = Q/(model_Q[:len(Year)])
         mid.set_ylim(0, 2) 
         mid.yaxis.set_minor_locator(AutoMinorLocator())
-        s = 'population' if POP else 'GDP'         
+        s = 'population' if POP else GDP_         
         mid.plot(Year, ratio, label='ratio: %s data/model'%s) 
         mid.legend()
         #baseline at ratio = 1:
-        mid.plot(x_base, (1,1), color=base_clr, lw=lw_b)
+        baseline(mid, 1)
 
     #bot: Growth rate plot:
     bot.set_ylabel('growth rate (%/yr)')
@@ -143,9 +145,14 @@ def basic_plot(nation, Year, Q, gr, avg, r_u='', Qh='', Q0='',
         bot.plot(yr_avg, gr_avg, label='%i-yr rolling avg'%dn)
     bot.legend(loc=loc_bot)
     #baseline at 0 growth rate:
-    bot.plot(x_base, (0,0), color=base_clr, lw=lw_b)
-
+    baseline(bot, 0)
+    
+    top = 0.88 if top_axis else 0.93
+    Fig.subplots_adjust(left=0.12,right=0.88, 
+                        bottom=0.08, hspace=0.02, 
+                        wspace=0.02, top=top)
     return Fig
+
 
 def gr_data(Q, Year):
     """Annual growth rate in %
@@ -171,7 +178,7 @@ def t_from_yr(Year, r0):
     """
     return r0*1.E-2*(Year - Year[0])
 
-def fitting(nation, Q, Year, p0='', gdp='True', mode='sat'):
+def fitting(nation, Q, Year, p0='', gdp=True, mode='sat', gdppc=False):
     '''Fit the data to one of the following models:
     '''
     #2-parameter saturation model:
@@ -201,9 +208,10 @@ def fitting(nation, Q, Year, p0='', gdp='True', mode='sat'):
         print '   recognized modes for fitting are', modes
         return
 
+    G_ = 'GDP per capita ' if gdppc else 'GDP '
     R = Q[-1]/Q[0]
     print '%s: %i data points'%(nation, len(Year))
-    s = 'GDP has grown from %6.2E($10) in %i to %6.2E($10) in %i' if gdp else\
+    s = G_ +'has grown from %6.2E($10) in %i to %6.2E($10) in %i' if gdp else\
         'Population has grown from %6.2E in %i to %6.2E in %i'
     print s %(Q[0], Year[0], Q[-1], Year[-1])
     print 'an increase by factor of %.2g' % R
@@ -252,16 +260,16 @@ def fitting(nation, Q, Year, p0='', gdp='True', mode='sat'):
         print ' Final result  --- ['+' '.join(['%.3E,' %p for p in popt])[:-1]+']'
         print '*** Best-fit parameters:'
         if mode=='lin':
-            print '   r0 = %3.2f'%r_u +  ' %/year    ' + \
-                  'Q0 = %5.2E 2010USD'%Q_h
-            s = '   GDP increasses by %.2E USD10 per year' if gdp else\
+            s = 'Q0 = %5.2E 2010USD'%Q_h if gdp else 'Q0 = %5.2E'%Q_h           
+            print '   r0 = %3.2f'%r_u +  ' %/year    ' +  s
+            s = '   '+G_ +'increasses by %.2E USD10 per year' if gdp else\
                 '   Population increasses by %.2E per year'
             print s%gr    
             print '  Relative errors of fitting parameters:\n'+\
                   '   err(r0) = %5.2E   err(G0)= %5.2E'%(perr[0], perr[1])
         else:
             print '   ru = %3.2f'%r_u+'%      unhindered (unsaturated) growth rate'
-            s = '   Qh = %5.2E   Hindering (saturation) GDP in 2010USD \n' if gdp else\
+            s = '   Qh = %5.2E   Hindering (saturation) '+G_ +'in 2010USD \n' if gdp else\
                 '   Qh = %5.2E   Hindering (saturation) population \n'
             print s%Q_h,
             if mode == 'sat3par':
@@ -297,7 +305,7 @@ def fitting(nation, Q, Year, p0='', gdp='True', mode='sat'):
         s = '\n***Model predictions for %i for %s economy:' if gdp else\
             '\n***Model predictions for %i for %s population:'
         print s%(future[-1],nation)
-        s = '   GDP of %4.2E $10 and annual growth rate %3.2f' if gdp else\
+        s = '   '+G_ +'of %4.2E $10 and annual growth rate %3.2f' if gdp else\
             '   Population of %4.2E and annual growth rate %3.2f'
         print s %(Q_model[-1],r_model[-1])+'%'   
         print '\n', 70*'_','\n'

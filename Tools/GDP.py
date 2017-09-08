@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from numpy import exp, sqrt, log as ln, log10 as log
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ plt.close('all')
 data_dir = '../Data/'
 ## Datasets:
 
-fname = data_dir+'All_from67.xlsx'                                   
+fname = 'All_from67.xlsx'                                   
 sheet_name = 'GDP (2010 USD)'                                   
 names_row = 2
 years_top_row = 3 
@@ -20,7 +21,7 @@ data_col2 = None
 All67 = [fname, sheet_name, names_row, years_top_row, years_bot_row, 
         data_col1, data_col2]
 
-fname = data_dir+'GDP Time Series_Long.xlsx'                                   
+fname = 'GDP Time Series_Long.xlsx'                                   
 sheet_name = 'Sheet2'                                   
 names_row = 2
 years_top_row = 13 
@@ -29,6 +30,17 @@ data_col1 = 2
 data_col2 = 6
 Long = [fname, sheet_name, names_row, years_top_row, years_bot_row, 
         data_col1, data_col2]
+
+fname = 'UK_US_Series_ALL.xlsx'                                   
+sheet_name = 'Data'                                   
+names_row = 2
+years_top_row = 3 
+years_bot_row = 319
+data_col1 = 2
+data_col2 = 3
+UK_US = [fname, sheet_name, names_row, years_top_row, years_bot_row, 
+        data_col1, data_col2]
+
 
 ##################################################################
 
@@ -62,7 +74,7 @@ def excel(fname, sheet_name, names_row, years_top_row, years_bot_row,
             bot = bot - 1                                                                
         return top, bot + 1
                                                                                         
-    wb = openpyxl.load_workbook(fname)                                   
+    wb = openpyxl.load_workbook(data_dir+fname)                                   
     sheet = wb.get_sheet_by_name(sheet_name)                                   
     span = np.array([entry(r, years_col) for r in range(years_top_row, years_bot_row+1)])
     cols = sheet.max_column if data_col2 is None else data_col2
@@ -218,22 +230,23 @@ def plot_avg(Nations, Year, average, x_range,
 def load(data_set):   
     Nations, Year, GDP = excel(*data_set) 
     for nation in Nations:
-        if data_set[0] == 'GDP Time Series_Long.xlsx':
+        #if data_set[0] in ['GDP Time Series_Long.xlsx',]:
+        if data_set in [Long, UK_US]:
             if 'US' in nation or 'UK' in nation: GDP[nation] *= 1.E6
     return Nations, Year, GDP
     
-def fit_it(n_list, Year, GDP):   
+def fit_it(n_list, Year, GDP, gdppc=False):   
     #split the database to those whose fitting succeeded or failed: 
     failure, success = [], [] 
     #for the successes, dictionaries for all relevant info: 
     qs, ru, Qh, future, G_model, r_model = {}, {}, {}, {}, {}, {}
-
+    
     H, R = {}, {}
     for nation in n_list:
         R[nation]  = GDP[nation][-1]/GDP[nation][0]
         try:
             ru[nation], Qh[nation], Q0_dummy, future[nation], G_model[nation], r_model[nation]\
-               = fitting(nation, GDP[nation], Year[nation])
+               = fitting(nation, GDP[nation], Year[nation], gdppc=gdppc)
             success.append(nation)
             qs[nation] = Qh[nation]/GDP[nation][0]
             H[nation]  = (R[nation] - 1)/(ln(R[nation])*qs[nation])
@@ -256,15 +269,15 @@ if __name__ == '__main__':
     n_list = ''
     data_set = All67
     #data_set = Long
-
-    outfile = ''
-    #outfile = 'Outfiles/Current_model.dat'
+    data_set = UK_US
 
     plot_it = False
-    #plot_it = True
-
+    outfile = ''
     figfile = ''
-    figfile = 'Figs/Current_models.pdf'
+
+    #outfile = 'Outfiles/Current_model.dat'
+    plot_it = True
+    #figfile = 'Figs/Current_models.pdf'
 
     dn = 5
     loc_top = 'upper left'
@@ -293,7 +306,7 @@ if __name__ == '__main__':
 
     #********* Plotting ********
     print '\nNow plotting\n'
-    #'''
+    '''
     n_list = failure
     if figfile: 
         print '***plotting to file', figfile
@@ -309,7 +322,7 @@ if __name__ == '__main__':
     print '\n*** Done plotting'
     
     sys.exit()
-    #'''
+    '''
     n_list = success
     for nation in n_list:
         print 'Plotting results for',nation
